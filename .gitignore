@@ -1,0 +1,10 @@
+# Real voter data and generated decks never go in the repo
+inbox/
+processed/
+failed/
+output/
+*.log
+
+venv/
+__pycache__/
+.DS_Store

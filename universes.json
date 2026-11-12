@@ -1,0 +1,22 @@
+{
+  "_help": "This file controls which PDI universe feeds each column of the deck, and what the columns are called on the slides. To change a universe (e.g. after the June primary), edit the 'universe' value and the 'label', save, done. 'alternates' are also accepted if the file uses one of them instead — handy during transitions. Do not change the 'id' values: total, near, far are wired to the template.",
+  "slots": [
+    {
+      "id": "total",
+      "universe": "TOTAL",
+      "label": "ALL Voters"
+    },
+    {
+      "id": "near",
+      "universe": "26G5",
+      "alternates": ["26"],
+      "label": "March 2028 Likely Voters"
+    },
+    {
+      "id": "far",
+      "universe": "26P9A",
+      "alternates": ["26p"],
+      "label": "November 2028 Likely Voters"
+    }
+  ]
+}

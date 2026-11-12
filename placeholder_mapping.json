@@ -1,0 +1,76 @@
+{
+  "_readme": "v4. The deck has three SLOTS — total, near, far — wired to the template. universes.json decides which PDI universe code feeds each slot and what label appears on the slides; universe codes are opaque strings, never parsed or predicted. The export is an HTML table with universes as columns (code = voters column, code + ' H' = houses column). All percentages are computed as count / that slot's Total row, Decimal ROUND_HALF_UP to one decimal. District name = filename stem. Labels matched after normalization so export formatting drift is tolerated. Charts are located by shape name; EVERY shape with a matching name is updated (duplicates across slides are intentional); unrecognized chart shapes and unfound expected names are logged as warnings. NEW in v4: slots absent from the file are skipped (charts blanked, text emptied), and geographic pies are built from 'CA -' rows.",
+
+  "global_placeholders": {
+    "{{district_name}}": "Filename stem (all slide titles)",
+    "{{label_total}} / {{label_near}} / {{label_far}}": "The 'label' field of the matching slot in universes.json — feeds every column header and table descriptor. Emptied when that slot has no data."
+  },
+
+  "per_slot_placeholders": {
+    "_pattern": "Replace <slot> with total, near, or far",
+    "{{voters_<slot>}}": "Total row voters, comma-formatted",
+    "{{houses_<slot>}}": "Total row houses, comma-formatted",
+    "{{evbm_<slot>}}": "pct(Any Early VBM / Total)",
+    "{{alvbm_<slot>}}": "pct(Always Late VBM / Total)",
+    "{{vitm_<slot>}}": "derived: 100 - evbm - alvbm",
+    "{{share_near}} / {{share_far}}": "derived: pct(slot Total voters / total-slot Total voters); no share for the total slot. Emptied (with a warning) when the total slot is absent — there is no denominator."
+  },
+
+  "per_slot_charts": {
+    "_pattern": "Shape names are <Slot>_<Kind>: Total_/Near_/Far_ + PartyPie, AgeChart, EthChart, HomePie, CityPie, CouncilPie, SupPie. Every copy of a name is updated.",
+    "PartyPie": {
+      "categories": ["DEM", "REP", "NPP", "Other"],
+      "values": ["pct(Dem)", "pct(Rep)", "pct(Independent)",
+                 "derived: pct(Total - Dem - Rep - Independent)"]
+    },
+    "AgeChart": {
+      "categories": ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"],
+      "values": ["pct(Age 18-24)", "pct(Age 25-34)", "pct(Age 35-44)",
+                 "pct(Age 45-54)", "pct(Age 55-64)", "pct(Age 65)"]
+    },
+    "EthChart": {
+      "categories": ["African-American", "Asian", "Latino", "Caucasian or Other"],
+      "values": ["pct(African-American)", "pct(Asian)", "pct(Latino)",
+                 "derived: pct(Total - AfAm - Asian - Latino)"]
+    },
+    "HomePie": {
+      "categories": ["Renter", "Homeowner"],
+      "values": ["derived: pct(Total - Homeowner)  [counts, not 100-minus]",
+                 "pct(Homeowner)"],
+      "note": "PDI row label is 'Homeowner'. Renter is the remainder of the universe total — everyone not flagged homeowner, which includes unknowns."
+    }
+  },
+
+  "geographic_charts": {
+    "_pattern": "Same <Slot>_<Kind> naming: CityPie, CouncilPie, SupPie. One pie per category — each slice is one geography. Built from rows whose label starts with 'CA -'. Council District is tested before City so 'City of X Council District N' is never swallowed by the city pattern. All matching is case-insensitive; supervisorial ordinals (1st, 2nd, 11th...) are handled generally.",
+    "CityPie": {
+      "source_rows": "'CA - City Of <Name>' and 'CA - Town Of <Name>' (treated identically) plus 'CA - Uninc - ...'",
+      "slice_labels": "City/town name as written in the export; the unincorporated row is labeled 'Unincorporated' (county name discarded)",
+      "order": "Alphabetical, Unincorporated always last",
+      "coverage_check": "Cities + unincorporated should cover ~100% of each universe; outside 98-102% a WARNING with the actual total appears in the run summary (never fatal)"
+    },
+    "CouncilPie": {
+      "source_rows": "'CA - City/Town of <City> Council District <n>'",
+      "slice_labels": "D<n> when all districts share one parent city; '<City> D<n>' when districts from multiple cities appear in one file (plain D<n> would collide)",
+      "order": "Numeric (D1, D2, ... D10 — not lexicographic); multi-city files sort city-first, then numeric"
+    },
+    "SupPie": {
+      "source_rows": "'CA - <County> - <n>th Supervisorial District'",
+      "slice_labels": "SD <n> (county name discarded)",
+      "order": "Numeric"
+    },
+    "unrecognized": "Any other 'CA -' row is logged by name in the run summary and never guessed at (e.g. State Senate district rows).",
+    "sizing": "Slice value = geography count / that slot's Total row, half-up one decimal. No slice cap, no 'rest of district' grouping.",
+    "label_caveat": "The pies use PowerPoint's automatic percent labels, which normalize to the plotted total. For cities (~100% coverage) the displayed % equals the universe share. For council/supervisorial pies the displayed % is the share among the charted districts, since those don't cover the whole universe. Slice proportions always follow the universe-share values."
+  },
+
+  "partial_data_behavior": {
+    "absent_slot": "A slot whose universe (and alternates) aren't in the file is skipped: its charts are BLANKED (series cleared, renders empty — never template dummy values), its text placeholders emptied (incl. its label), its summary-table rows removed.",
+    "absent_geo_category": "A geographic category with no rows in the file blanks its pies for every slot.",
+    "slide_deletion": "A slide is deleted when it contains at least one chart and EVERY chart on it was blanked. Chartless slides are never deleted. Removed slides are listed in the run summary.",
+    "table_rows": "A table body row is removed when it contained placeholders and every one of them resolved to empty (static scaffolding text doesn't save a data-less row).",
+    "run_summary": "Every run ends with a RUN SUMMARY block: slots filled/empty and why, geographic slice counts, unrecognized rows, charts blanked, slides removed, placeholders emptied, warnings."
+  },
+
+  "still_fatal": "No deck is written when: the file has no parsable table or no Description header; NONE of the configured universes are present; a required standard segment row is missing; a count is non-numeric or negative; a present universe fails validation (party sum <= TOTAL, age buckets ~TOTAL, ethnicity remainder non-negative, early+late VBM <= TOTAL, Homeowner <= TOTAL); the template contains an unknown {{placeholder}}. A present universe whose Total is 0 is demoted to absent with a warning."
+}
