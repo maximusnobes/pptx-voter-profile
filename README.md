@@ -17,24 +17,45 @@ On school-district ballot measure campaigns, every new client starts with the sa
 - **Validates before it writes.** Party, age, ethnicity and vote-by-mail segments must reconcile with each universe's total, or no deck is produced. Percentages are computed from counts with half-up rounding, never copied from the report.
 - **Tolerates partial data.** If a universe is missing from the file, its charts and text are blanked, slides left empty are removed, and the run summary says exactly what was skipped.
 - **Builds geographic pies.** City, unincorporated, council-district and supervisorial-district rows are classified automatically. Anything it doesn't recognize is logged by name instead of guessed.
-- **Runs hands-free.** `watch_folder.py` watches an `inbox/` folder and turns each dropped export into a deck, moving the source file to `processed/` or `failed/`.
+- **Batch mode.** `watch_folder.py` watches an `inbox/` folder while it's running and turns each dropped export into its own deck, moving the source file to `processed/` or `failed/`.
 
-## Quick start
+## Setup
+
+Everything lives in one folder. These steps assume `~/pptx-pipeline`; any location works.
 
 ```bash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/maximusnobes/pptx-voter-profile.git ~/pptx-pipeline
+cd ~/pptx-pipeline
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+```
 
-# try it on synthetic data
-python3 examples/make_sample_export.py
-python3 populate_pptx.py "examples/Springfield Unified School District.xls"
+Try it on synthetic data:
+
+```bash
+./venv/bin/python examples/make_sample_export.py
+./venv/bin/python populate_pptx.py "examples/Springfield Unified School District.xls"
 # -> output/Springfield_Unified_School_District_Voter_Profile_<timestamp>.pptx
 ```
 
-With a real export, rename the file to the district's name first (the filename becomes the title on every slide), then either run `populate_pptx.py` on it or start the watcher and drop it into `inbox/`:
+## Everyday use
+
+1. **Export from PDI.** Pull the voter-profile report for the district as a tabular export (`.xls`).
+2. **Rename the file to the district's name**, e.g. `Example Unified School District.xls`. The filename becomes the title on every slide; a raw download name like `report_123.xls` is rejected.
+3. **Start the watcher** in Terminal and leave the window open:
+
+   ```bash
+   cd ~/pptx-pipeline && ./venv/bin/python watch_folder.py
+   ```
+
+4. **Drop the file(s) into `inbox/`.** Once the folder has been quiet for 15 seconds, each file is processed on its own, so several districts can go in at once.
+5. **Collect the deck from `output/`.** The source file moves to `processed/`, or to `failed/` with the reason in `output/populate_pptx.log`. Every run also prints a summary of which universes were filled and what was blanked.
+6. **Stop the watcher** with `Ctrl+C` when you're done.
+
+For a single file you can skip the watcher:
 
 ```bash
-./venv/bin/python watch_folder.py
+cd ~/pptx-pipeline && ./venv/bin/python populate_pptx.py "Example Unified School District.xls"
 ```
 
 ## Configuration
